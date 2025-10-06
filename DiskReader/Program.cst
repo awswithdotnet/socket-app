@@ -1,0 +1,73 @@
+﻿using System.Buffers.Text;
+using System.IO.Enumeration;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
+
+namespace DiskReader;
+
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+
+        var ipEndPoint = new IPEndPoint(IPAddress.Any, 11000);
+        TcpListener listener = new(ipEndPoint);
+        String terminationCode = "<|terminate|>";
+
+
+        try
+        {
+            listener.Start();
+
+            bool shouldLoop = true;
+
+            while (shouldLoop)
+            {
+                var buffer = new byte[1024];
+
+                using TcpClient handler = await listener.AcceptTcpClientAsync();
+                var incomingMessage = await handler.Client.ReceiveAsync(buffer);
+                var response = Encoding.UTF8.GetString(buffer, 0, incomingMessage);
+
+                if (response.IndexOf(terminationCode) > -1)
+                {
+                    shouldLoop = false;
+                    break;
+                }
+
+
+                var fileName = response.Trim();
+
+                Console.WriteLine("File requested: " + fileName);
+
+
+                await using NetworkStream stream = handler.GetStream();
+                var message = DateTime.Now.ToString();
+
+                //var outgoingMessage = Encoding.UTF8.GetBytes(message + "\n");
+
+                byte[] outgoingMessage = await ReadFile(fileName);
+                await stream.WriteAsync(outgoingMessage);
+
+
+                Console.WriteLine(fileName + " sent.");
+                //Console.WriteLine($"Sent message: \"{message}\"");
+            }
+        }
+        finally
+        {
+            listener.Stop();
+        }
+
+    }
+
+    private static async Task<byte[]> ReadFile(string fileName)
+    {
+        byte[] fileBytes = File.ReadAllBytes(fileName);
+
+        return fileBytes;
+    }
+}
