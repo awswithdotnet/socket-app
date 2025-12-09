@@ -8,11 +8,19 @@ class Program
 {
     static async Task Main(string[] args)
     {
+        int listeningPort = 11000;
 
-        String terminationCode = "<|terminate|>";
+        if (args.Length > 0)
+        {
+            listeningPort = int.Parse(args[0]);
+        }
+            
+        Console.WriteLine("Listening on: " + listeningPort);
+
+        string terminationCode = "<|terminate|>";
         bool shouldLoop = true;
 
-        var ipEndPoint = new IPEndPoint(IPAddress.Any, 11000);
+        var ipEndPoint = new IPEndPoint(IPAddress.Any, listeningPort);
 
         using Socket listener = new(
             ipEndPoint.AddressFamily,
@@ -35,6 +43,7 @@ class Program
             {
                 shouldLoop = false;
                 await handler.DisconnectAsync(false);
+                Console.WriteLine("Termination code received. Shutting down.");
                 break;
             }
 
